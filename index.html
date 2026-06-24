@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>英语单词打卡学习</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 导航栏 -->
+    <nav id="topNav" class="navbar">
+      <button id="navBack" class="nav-btn" style="display:none" onclick="goBack()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+      </button>
+      <span id="navTitle" class="nav-title">英语单词打卡</span>
+      <div class="nav-right">
+        <button id="navProfile" class="nav-btn" onclick="showPersonalCenter()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- 学生选择首页 -->
+    <div id="pageStudentSelect" class="page active">
+      <div class="page-header">
+        <h2 class="page-title">👋 欢迎回来</h2>
+        <p class="page-subtitle">请选择你的名字开始学习</p>
+      </div>
+      <div id="studentGrid" class="student-grid"></div>
+    </div>
+
+    <!-- 年级选择页面 -->
+    <div id="pageGradeSelect" class="page">
+      <div class="page-header">
+        <h2 class="page-title">选择年级</h2>
+        <p class="page-subtitle">请选择你要学习的人教版英语教材年级</p>
+      </div>
+      <div id="gradeGrid" class="grade-grid"></div>
+    </div>
+
+    <!-- 学习页面 -->
+    <div id="pageLearning" class="page">
+      <div id="progressBar" class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+      <div class="learning-content">
+        <div id="cardArea" class="card-area">
+          <div id="cardFront" class="word-card">
+            <span id="wordEn" class="word-en"></span>
+            <span id="wordStatus" class="word-status"></span>
+          </div>
+          <div id="cardDetail" class="word-detail" style="display:none;">
+            <div class="detail-header">
+              <span id="detailEn" class="detail-en"></span>
+              <span id="detailPhonetic" class="detail-phonetic"></span>
+            </div>
+            <div class="detail-cn-row">
+              <span class="label">中文：</span>
+              <span id="detailCn" class="detail-cn"></span>
+            </div>
+            <div class="detail-example-row">
+              <span class="label">例句：</span>
+              <span id="detailExample" class="detail-example"></span>
+            </div>
+            <div class="detail-cn-row">
+              <span class="label">译文：</span>
+              <span id="detailExampleCn" class="detail-example-cn"></span>
+            </div>
+            <div class="detail-tips">
+              <span id="detailTips" class="detail-tip-text"></span>
+            </div>
+            <div class="detail-actions">
+              <button id="btnAddToVocab" class="btn btn-primary" onclick="addToVocabBook()">📕 加入生词本</button>
+            </div>
+          </div>
+        </div>
+        <div id="actionButtons" class="action-buttons">
+          <button id="btnKnown" class="btn btn-success" onclick="markKnown()">✅ 已学习</button>
+          <button id="btnLearn" class="btn btn-primary" onclick="showDetail()">📖 开始学习</button>
+          <button id="btnNext" class="btn btn-secondary" onclick="nextWord()">⏭ 下一个</button>
+          <button id="btnShuffle" class="btn btn-icon" onclick="shuffleWords()" title="随机打乱顺序">🔀 打乱</button>
+        </div>
+      </div>
+      <div id="learningStats" class="learning-stats">
+        <span id="statProgress">0/0</span>
+        <span class="stat-divider">|</span>
+        <span id="statKnown">已掌握：0</span>
+        <span class="stat-divider">|</span>
+        <span id="statVocab">生词本：0</span>
+      </div>
+    </div>
+
+    <!-- 个人中心页面 -->
+    <div id="pageProfile" class="page">
+      <div class="profile-header">
+        <div id="profileAvatar" class="profile-avatar"></div>
+        <h2 id="profileName" class="profile-name">我的学习中心</h2>
+        <span id="profileStudentBadge" class="profile-student-badge" onclick="switchStudentFromProfile()" style="cursor:pointer;">切换学生 →</span>
+      </div>
+
+      <div class="profile-stats">
+        <div class="stat-card">
+          <div class="stat-number" id="profileTotalLearned">0</div>
+          <div class="stat-label">已学单词</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="profileTotalKnown">0</div>
+          <div class="stat-label">已掌握</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="profileVocabCount">0</div>
+          <div class="stat-label">生词本</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="profileLearningDays">0</div>
+          <div class="stat-label">学习天数</div>
+        </div>
+      </div>
+
+      <div class="profile-sections">
+        <div class="section-tabs">
+          <button id="tabVocab" class="tab-btn active" onclick="switchProfileTab('vocab')">📕 生词本</button>
+          <button id="tabHistory" class="tab-btn" onclick="switchProfileTab('history')">📊 学习记录</button>
+          <button id="tabStats" class="tab-btn" onclick="switchProfileTab('stats')">📈 学习统计</button>
+        </div>
+
+        <div id="profileVocab" class="tab-content active">
+          <div id="vocabList" class="vocab-list"></div>
+          <div id="vocabEmpty" class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/></svg>
+            <p>生词本还是空的<br>学习时将单词加入生词本吧！</p>
+          </div>
+        </div>
+
+        <div id="profileHistory" class="tab-content">
+          <div id="historyList" class="history-list"></div>
+          <div id="historyEmpty" class="empty-state">
+            <p>还没有学习记录，快去学习吧！</p>
+          </div>
+        </div>
+
+        <div id="profileStats" class="tab-content">
+          <div class="stats-chart-section">
+            <h4>各年级学习进度</h4>
+            <div id="gradeProgressList" class="grade-progress-list"></div>
+          </div>
+          <div class="stats-chart-section">
+            <h4>学习习惯</h4>
+            <div class="habit-row">
+              <span class="habit-label">连续学习</span>
+              <span id="habitStreak" class="habit-value">0 天</span>
+            </div>
+            <div class="habit-row">
+              <span class="habit-label">本周学习</span>
+              <span id="habitThisWeek" class="habit-value">0 天</span>
+            </div>
+            <div class="habit-row">
+              <span class="habit-label">本月学习</span>
+              <span id="habitThisMonth" class="habit-value">0 天</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-actions">
+        <button class="btn btn-outline" onclick="switchStudentFromProfile()">👤 切换学生</button>
+        <button class="btn btn-danger-outline" onclick="clearAllData()" style="margin-top:8px;">🗑 清除我的数据</button>
+      </div>
+    </div>
+
+    <!-- 生词本复习页面 -->
+    <div id="pageReview" class="page">
+      <div class="review-content">
+        <div id="reviewCardArea" class="card-area">
+          <div id="reviewCardFront" class="word-card review-card">
+            <span id="reviewWordEn" class="word-en"></span>
+          </div>
+        </div>
+        <div id="reviewActions" class="action-buttons">
+          <button class="btn btn-success" onclick="reviewKnown()">✅ 掌握了</button>
+          <button class="btn btn-primary" onclick="reviewShowDetail()">📖 查看详情</button>
+          <button class="btn btn-secondary" onclick="reviewNext()">⏭ 下一个</button>
+        </div>
+        <div id="reviewDetail" class="word-detail" style="display:none;">
+          <div class="detail-header">
+            <span id="reviewDetailEn" class="detail-en"></span>
+            <span id="reviewDetailPhonetic" class="detail-phonetic"></span>
+          </div>
+          <div class="detail-cn-row">
+            <span class="label">中文：</span>
+            <span id="reviewDetailCn" class="detail-cn"></span>
+          </div>
+          <div class="detail-example-row">
+            <span class="label">例句：</span>
+            <span id="reviewDetailExample" class="detail-example"></span>
+          </div>
+          <div class="detail-cn-row">
+            <span class="label">译文：</span>
+            <span id="reviewDetailExampleCn" class="detail-example-cn"></span>
+          </div>
+          <div class="detail-actions">
+            <button class="btn btn-outline" onclick="reviewHideDetail()">返回</button>
+            <button class="btn btn-danger-outline" onclick="reviewRemoveFromVocab()">📕 从生词本移除</button>
+          </div>
+        </div>
+        <div id="reviewStats" class="learning-stats">
+          <span id="reviewProgress">0/0</span>
+          <span class="stat-divider">|</span>
+          <span id="reviewMastered">已掌握：0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="data/words.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/tts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
