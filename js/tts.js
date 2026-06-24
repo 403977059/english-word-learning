@@ -1,6 +1,7 @@
 /**
  * 文字转语音 - 使用 Web Speech API
  * 改进了初始化时序和错误处理
+ gx测试
  */
 
 let ttsReady = false;
