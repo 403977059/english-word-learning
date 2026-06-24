@@ -1,23 +1,14 @@
 /**
- * 文字转语音 - 使用 Web Speech API
- * 改进了初始化时序和错误处理
- gx测试
+ * 文字转语音 - 三模式降级朗读
+ * 1. 网络 TTS（有道词典，国内可用）
+ * 2. Web Speech API（本地引擎）
+ * 3. 提示安装语音服务
  */
 
-let ttsReady = false;
-let ttsSupported = false;
-
-// 检查是否支持语音合成（兼容多数浏览器）
-function checkTTS() {
-  return 'speechSynthesis' in window;
-}
-
-// 安全提示函数（不依赖 app.js 的 showToast）
 function ttsNotify(msg) {
   try {
-    if (typeof showToast === 'function') {
-      showToast(msg);
-    } else {
+    if (typeof showToast === 'function') { showToast(msg); }
+    else {
       const el = document.getElementById('toast');
       if (el) {
         el.textContent = msg;
@@ -29,85 +20,63 @@ function ttsNotify(msg) {
   } catch(e) {}
 }
 
-// 等待语音加载完成
-function waitForVoices(callback, timeout = 3000) {
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) {
-    callback(voices);
-    return;
-  }
-  // 有些浏览器异步加载语音列表
-  window.speechSynthesis.onvoiceschanged = () => {
-    const v = window.speechSynthesis.getVoices();
-    if (v.length > 0) {
-      window.speechSynthesis.onvoiceschanged = null;
-      callback(v);
-    }
-  };
-  // 超时保护
-  setTimeout(() => {
-    if (window.speechSynthesis.getVoices().length > 0) return;
-    // 超时后也尝试继续
-    ttsReady = true;
-  }, timeout);
+// 方案一：网络 TTS（有道词典美式发音，国内可直接访问）
+function speakNetwork(word) {
+  return new Promise((resolve) => {
+    try {
+      const audio = new Audio();
+      audio.src = 'https://dict.youdao.com/dictvoice?audio='
+                  + encodeURIComponent(word.toLowerCase()) + '&type=0';
+      audio.volume = 1.0;
+      let timer = setTimeout(() => { audio.src = ''; resolve(false); }, 8000);
+      audio.onplay = () => { clearTimeout(timer); };
+      audio.onended = () => { clearTimeout(timer); resolve(true); };
+      audio.onerror = () => { clearTimeout(timer); resolve(false); };
+      audio.play().catch(() => { clearTimeout(timer); resolve(false); });
+    } catch(e) { resolve(false); }
+  });
 }
 
-function initTTS() {
-  if (ttsReady) return;
-  ttsSupported = checkTTS();
-  if (!ttsSupported) return;
-  try {
-    // 触发语音加载
-    window.speechSynthesis.getVoices();
-    waitForVoices(() => { ttsReady = true; });
-    ttsReady = true;
-  } catch(e) {
-    console.warn('TTS init error:', e);
-  }
+// 方案二：Web Speech API（本地语音引擎）
+function speakNative(word) {
+  return new Promise((resolve) => {
+    try {
+      if (!window.speechSynthesis) { resolve(false); return; }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = 'en-US';
+      u.rate = 0.85;
+      const voices = window.speechSynthesis.getVoices();
+      const ev = voices.find(v => v.lang.startsWith('en-US'))
+                || voices.find(v => v.lang.startsWith('en'));
+      if (ev) u.voice = ev;
+      let done = false;
+      const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
+      u.onend = () => finish(true);
+      u.onerror = () => finish(false);
+      window.speechSynthesis.speak(u);
+      setTimeout(() => finish(false), 3000);
+    } catch(e) { resolve(false); }
+  });
 }
 
-function speakWord(word) {
-  // 如果语音还没准备好，尝试重新初始化
-  if (!ttsReady) {
-    initTTS();
-  }
+// 主入口：自动选择最佳方案
+async function speakWord(word) {
+  // 优先走网络（兼容性最好，荣耀/华为手机优先）
+  const ok1 = await speakNetwork(word);
+  if (ok1) return;
 
-  if (!ttsSupported || !checkTTS()) {
-    ttsNotify('您的浏览器不支持语音朗读');
-    return;
-  }
+  // 网络不行，试本地引擎
+  const ok2 = await speakNative(word);
+  if (ok2) return;
 
-  try {
-    // 取消之前正在播放的语音
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.85;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    // 优先选择美式英语语音
-    const voices = window.speechSynthesis.getVoices();
-    const englishVoice = voices.find(v => v.lang.startsWith('en-US'))
-                       || voices.find(v => v.lang.startsWith('en'));
-    if (englishVoice) {
-      utterance.voice = englishVoice;
-    }
-
-    window.speechSynthesis.speak(utterance);
-  } catch(e) {
-    ttsNotify('语音播放失败，请重试');
-  }
+  // 都不行，简单提示
+  ttsNotify('🔊 建议安装 Google 文字转语音应用');
 }
 
-// 页面加载时初始化
-document.addEventListener('DOMContentLoaded', initTTS);
-
-// 首次用户交互时再次尝试（Chrome 等浏览器需要）
+// 点击时预加载语音
 document.addEventListener('click', () => {
-  if (!ttsReady) initTTS();
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+  }
 }, { once: true });
-
-// 暴露检查状态（可选调试用）
-window.__ttsReady = () => ttsReady;
